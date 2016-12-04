@@ -133,8 +133,10 @@ def configure() {
 def sensorValueEvent(value) {
 	if (value) {
 		createEvent(name: "contact", value: "open", descriptionText: "$device.displayName is open")
+		createEvent(name: "door", value: "open", descriptionText: "$device.displayName is open")
 	} else {
 		createEvent(name: "contact", value: "closed", descriptionText: "$device.displayName is closed")
+		createEvent(name: "door", value: "closed", descriptionText: "$device.displayName is closed")
 	}
 }
 
