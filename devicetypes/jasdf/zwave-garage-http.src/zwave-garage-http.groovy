@@ -27,9 +27,18 @@ metadata {
 		fingerprint deviceId: "0x0701", inClusters: "0x5E,0x80,0x71,0x85,0x70,0x72,0x86,0x30,0x31,0x84,0x59,0x73,0x5A,0x8F,0x98,0x7A", outClusters:"0x20" // Philio multi+
 
 	}
-
 	preferences {
-  }
+		input("DeviceIP", "string", title:"Device IP Address", description: "Please enter your device's IP Address", required: true, displayDuringSetup: true)
+		input("DevicePort", "string", title:"Device Port", description: "Empty assumes port 80.", required: false, displayDuringSetup: true)
+		input("DevicePathOn", "string", title:"URL Path for ON", description: "Rest of the URL, include forward slash.", displayDuringSetup: true)
+		input("DevicePathOff", "string", title:"URL Path for OFF", description: "Rest of the URL, include forward slash.", displayDuringSetup: true)
+		input(name: "DevicePostGet", type: "enum", title: "POST or GET", options: ["POST","GET"], defaultValue: "POST", required: false, displayDuringSetup: true)
+		section() {
+			input("HTTPAuth", "bool", title:"Requires User Auth?", description: "Choose if the HTTP requires basic authentication", defaultValue: false, required: true, displayDuringSetup: true)
+			input("HTTPUser", "string", title:"HTTP User", description: "Enter your basic username", required: false, displayDuringSetup: true)
+			input("HTTPPassword", "string", title:"HTTP Password", description: "Enter your basic password", required: false, displayDuringSetup: true)
+		}
+	}
 
 	// simulator metadata
 	simulator {
@@ -61,27 +70,75 @@ metadata {
 }
 
 def open() {
-	sendEvent(name: "door", value: "opening")
-    runIn(6, finishOpening)
+    def lastValue = device.latestValue('door')
+	log.debug "Called open command ${lastValue}"
+    if (!lastValue.contains('ing')) {
+		sendEvent(name: "door", value: "opening")
+    	runCmd(DevicePathOn)
+    }
 }
 
 def close() {
-    sendEvent(name: "door", value: "closing")
-	runIn(6, finishClosing)
+    def lastValue = device.latestValue('door')
+    log.debug "Called close command ${lastValue}"
+    if (!lastValue.contains('ing')) {
+		sendEvent(name: "door", value: "closing")
+    	runCmd(DevicePathOff)
+    }
+
 }
 
-def finishOpening() {
-    sendEvent(name: "door", value: "open")
-    sendEvent(name: "contact", value: "open")
+def runCmd(String varCommand) {
+	def host = DeviceIP
+	def LocalDevicePort = ''
+	if (DevicePort==null) { LocalDevicePort = "80" } else { LocalDevicePort = DevicePort }
+
+	def userpassascii = "${HTTPUser}:${HTTPPassword}"
+	def userpass = "Basic " + userpassascii.encodeAsBase64().toString()
+
+	log.debug "The device id configured is: $device.deviceNetworkId"
+
+	def path = varCommand
+	//log.debug "path is: $path"
+	//log.debug "Uses which method: $DevicePostGet"
+	def body = "" 
+	//log.debug "body is: $body"
+
+	def headers = [:] 
+	headers.put("HOST", "$host:$LocalDevicePort")
+	//headers.put("Content-Type", "application/x-www-form-urlencoded")
+	if (HTTPAuth) {
+		headers.put("Authorization", userpass)
+	}
+	//log.debug "The Header is $headers"
+	def method = "POST"
+	try {
+		if (DevicePostGet.toUpperCase() == "GET") {
+			method = "GET"
+			}
+		}
+	catch (Exception e) {
+		settings.DevicePostGet = "POST"
+		log.debug e
+		log.debug "You must not have set the preference for the DevicePOSTGET option"
+	}
+	//log.debug "The method is $method"
+	try {
+		def hubAction = new physicalgraph.device.HubAction(
+			method: method,
+			path: path,
+			body: body,
+			headers: headers
+			)
+		log.debug hubAction
+		return hubAction
+	}
+	catch (Exception e) {
+		log.debug "Hit Exception $e on $hubAction"
+	}
 }
 
-def finishClosing() {
-    sendEvent(name: "door", value: "closed")
-    sendEvent(name: "contact", value: "closed")
-}
 //---------------------------------------------------------------------------------------
-
-
 def parse(String description) {
 	//log.debug("${evt}")
 	def result = null
