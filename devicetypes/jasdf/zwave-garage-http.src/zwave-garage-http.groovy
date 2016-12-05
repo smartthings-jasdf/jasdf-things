@@ -140,7 +140,7 @@ def runCmd(String varCommand) {
 
 //---------------------------------------------------------------------------------------
 def parse(String description) {
-	//log.debug("${evt}")
+	log.debug("${description}")
 	def result = null
 	if (description.startsWith("Err 106")) {
 		if (state.sec) {
