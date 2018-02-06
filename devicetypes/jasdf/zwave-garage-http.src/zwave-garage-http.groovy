@@ -72,7 +72,7 @@ metadata {
 def open() {
     def lastValue = device.latestValue('door')
 	log.debug "Called open command ${lastValue}"
-    if (!lastValue.contains('ing')) {
+    if (lastValue != 'open') {
 		sendEvent(name: "door", value: "opening")
     	runCmd(DevicePathOn)
     }
@@ -81,7 +81,7 @@ def open() {
 def close() {
     def lastValue = device.latestValue('door')
     log.debug "Called close command ${lastValue}"
-    if (!lastValue.contains('ing')) {
+    if (lastValue != 'closed') {
 		sendEvent(name: "door", value: "closing")
     	runCmd(DevicePathOff)
     }
